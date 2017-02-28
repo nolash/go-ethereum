@@ -39,12 +39,17 @@ type NodeResult struct {
 	Nodes []*Node
 }
 
-type NodeIF struct {
+/*type NodeIF struct {
 	One         uint
 	Other       uint
 	MessageType uint8
+}*/
+type NodeIF struct {
+	One         string
+	Other       string
+	MessageType uint8
 }
-
+	
 var methodsAvailable = []string{"POST", "GET", "PUT", "DELETE"}
 
 func (self *ResourceHandlers) handler(method string) *ResourceHandler {
@@ -128,7 +133,8 @@ func NewSessionController() (*ResourceController, chan bool) {
 								Handle: func(msg interface{}, parent *ResourceController) (interface{}, error) {
 									nodeid := adapters.RandomNodeId()
 									net.NewNode(&NodeConfig{Id: nodeid})
-									return &NodeConfig{Id: nodeid}, nil
+									//return &NodeConfig{Id: nodeid}, nil
+									return &struct{Id string}{Id: fmt.Sprintf("%v",nodeid)}, nil;
 								},
 							},
 							Retrieve: &ResourceHandler{
@@ -141,15 +147,17 @@ func NewSessionController() (*ResourceController, chan bool) {
 									var othernode *Node
 
 									args := msg.(*NodeIF)
-									onenode := net.Nodes[args.One-1]
+									//onenode := net.Nodes[args.One-1]
+									onenode := net.GetNode(adapters.NewNodeIdFromHex(args.One))
 
-									if args.Other == 0 {
+									if args.Other == "" {
 										if net.Start(onenode.Id) != nil {
-											net.Stop(onenode.Id)
+											//net.Stop(onenode.Id)
 										}
 										return &NodeResult{Nodes: []*Node{onenode}}, nil
 									} else {
-										othernode = net.Nodes[args.Other-1]
+										//othernode = net.Nodes[args.Other-1]
+										othernode = net.GetNode(adapters.NewNodeIdFromHex(args.Other));
 										net.Connect(onenode.Id, othernode.Id)
 										return &NodeResult{Nodes: []*Node{onenode, othernode}}, nil
 									}
