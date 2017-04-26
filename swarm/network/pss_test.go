@@ -320,8 +320,8 @@ var action func(ctx context.Context) error
 		expectnodesids = append(expectnodesids, k)
 	}
 
-	// wait a bit for the kademlia to fill up
-	time.Sleep(time.Second)
+	// wait a bit for the kademlias to fill up
+	time.Sleep(time.Second * 3)
 	
 	// send and monitor receive of pss
 	action = func(ctx context.Context) error {
@@ -395,7 +395,7 @@ var action func(ctx context.Context) error
 
 // pss simulation test
 // (simnodes running protocols)
-func TestPssFullStringEcho(t *testing.T) {
+func TestPssFullLinearEcho(t *testing.T) {
 
 	var action func(ctx context.Context) error
 	var check func(ctx context.Context, id *adapters.NodeId) (bool, error)
@@ -409,7 +409,8 @@ func TestPssFullStringEcho(t *testing.T) {
 
 	vct := protocols.NewCodeMap(protocolName, protocolVersion, 65535, &PssTestPayload{})
 	topic, _ := MakeTopic(protocolName, protocolVersion)
-
+	
+	fullnodes := []*adapters.NodeId{}
 	trigger := make(chan *adapters.NodeId)
 	net := simulations.NewNetwork(&simulations.NetworkConfig{
 		Id:      "0",
@@ -422,6 +423,10 @@ func TestPssFullStringEcho(t *testing.T) {
 	action = func(ctx context.Context) error {
 		for id, _ := range nodes {
 			ids = append(ids, id)
+			if _, ok := testpeers[id]; ok {
+				log.Trace(fmt.Sprintf("adding fullnode %x to testpeers %p", common.ByteLabel(id.Bytes()), testpeers))
+				fullnodes = append(fullnodes, id)
+			}
 		}
 		for i, id := range ids {
 			var peerId *adapters.NodeId
@@ -474,11 +479,11 @@ func TestPssFullStringEcho(t *testing.T) {
 	// first find a node that we're connected to
 	for firstpssnode == nonode {
 		log.Debug(fmt.Sprintf("Waiting for pss relaypeer for %x close to %x ...", common.ByteLabel(nodes[ids[0]].OverlayAddr()), common.ByteLabel(nodes[ids[1]].OverlayAddr())))
-		nodes[ids[0]].Pss.Overlay.EachLivePeer(nodes[ids[2]].OverlayAddr(), 255, func(p Peer, po int) bool {
+		nodes[fullnodes[0]].Pss.Overlay.EachLivePeer(nodes[fullnodes[1]].OverlayAddr(), 256, func(p Peer, po int) bool {
 			for _, id := range ids {
 				if id.NodeID == p.ID() {
-					log.Debug(fmt.Sprintf("PSS relay found; relaynode %v kademlia %v", id.NodeID, firstpssnode.NodeID))
 					firstpssnode = id
+					log.Debug(fmt.Sprintf("PSS relay found; relaynode %v kademlia %v", common.ByteLabel(id.Bytes()), common.ByteLabel(firstpssnode.Bytes())))
 				}
 			}
 			if firstpssnode == nonode {
@@ -494,11 +499,11 @@ func TestPssFullStringEcho(t *testing.T) {
 	// then find the node it's connected to
 	for secondpssnode == nonode {
 		log.Debug(fmt.Sprintf("PSS kademlia: Waiting for recipientpeer for %x close to %x ...", common.ByteLabel(nodes[ids[0]].OverlayAddr()), common.ByteLabel(nodes[ids[2]].OverlayAddr())))
-		nodes[firstpssnode].Pss.Overlay.EachLivePeer(nodes[ids[2]].OverlayAddr(), 256, func(p Peer, po int) bool {
+		nodes[firstpssnode].Pss.Overlay.EachLivePeer(nodes[fullnodes[1]].OverlayAddr(), 256, func(p Peer, po int) bool {
 			for _, id := range ids {
-				if id.NodeID == p.ID() && id.NodeID != ids[0].NodeID {
-					log.Debug(fmt.Sprintf("PSS recipient found; relaynode %v kademlia %v", id.NodeID, firstpssnode.NodeID))
+				if id.NodeID == p.ID() && id.NodeID != fullnodes[0].NodeID {
 					secondpssnode = id
+					log.Debug(fmt.Sprintf("PSS recipient found; relaynode %v kademlia %v", common.ByteLabel(id.Bytes()), common.ByteLabel(secondpssnode.Bytes())))
 				}
 			}
 			if secondpssnode == nonode {
@@ -969,7 +974,9 @@ func newPssTester(t *testing.T, ps *Pss, addr *peerAddr, numsimnodes int, handle
 	ct.Register(&PssMsg{})
 
 	// set up the outer protocol
-	hive := NewHive(NewHiveParams(), ps.Overlay)
+	hp := NewHiveParams()
+	hp.CallInterval = 250
+	hive := NewHive(hp, ps.Overlay)
 	nid := adapters.NewNodeId(addr.UnderlayAddr())
 
 	nodeAdapter := adapters.NewSimNode(nid, net)
@@ -1013,6 +1020,7 @@ func makePss(addr []byte, cachettl time.Duration) *Pss {
 	
 	overlay := NewKademlia(addr, kp)
 	ps := NewPss(overlay, pp)
+	overlay.Prune(time.Tick(time.Millisecond * 250))
 	return ps
 }
 
