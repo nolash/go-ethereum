@@ -448,6 +448,10 @@ func testFullRandomSnapshot(t *testing.T, sim bool, msgcount int) {
 			}
 
 			recvaddrs[simnode.ID()] = rpcbyte
+			err = client.Call(&rpcbyte, "pss_baseAddr")
+			if err != nil {
+				t.Fatalf("cant get overlayaddr: %v", err)
+			}
 		}
 		for i := 0; i < msgcount; i++ {
 

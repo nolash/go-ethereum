@@ -350,8 +350,8 @@ func (self *Pss) Forward(msg *PssMsg) error {
 	})
 
 	if sent == 0 {
-		log.Error("PSS: unable to forward to any peers")
-		return nil
+		//log.Error("PSS: unable to forward to any peers")
+		return fmt.Errorf("unable to forward to any peers")
 	}
 
 	self.addFwdCacheExpire(digest)

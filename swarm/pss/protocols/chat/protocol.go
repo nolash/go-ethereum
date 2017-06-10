@@ -48,6 +48,7 @@ var ChatTopic = pss.NewTopic(ChatProtocol.Name, int(ChatProtocol.Version))
 type ChatConn struct {
 	Addr []byte
 	E int
+	Detail error
 }
 
 func (c* ChatConn) Error() string {

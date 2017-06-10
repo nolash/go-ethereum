@@ -97,10 +97,12 @@ func (rw *pssRPCRW) WriteMsg(msg p2p.Msg) error {
 	if err != nil {
 		return err
 	}
+
 	return rw.Client.ws.CallContext(rw.Client.ctx, nil, "pss_send", rw.topic, pss.APIMsg{
 		Addr: rw.addr.Bytes(),
 		Msg:  pmsg,
 	})
+
 }
 
 func NewClient(ctx context.Context, cancel func(), config *ClientConfig) *Client {
