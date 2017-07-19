@@ -607,7 +607,6 @@ func (self *Network) getConn(oneID, otherID discover.NodeID) *Conn {
 func (self *Network) Shutdown() {
 	// stop all nodes
 	for _, node := range self.Nodes {
-		log.Debug(fmt.Sprintf("stopping node %s", node.ID().TerminalString()))
 		if err := node.Stop(); err != nil {
 			log.Warn(fmt.Sprintf("error stopping node %s", node.ID().TerminalString()), "err", err)
 		}

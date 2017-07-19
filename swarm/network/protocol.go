@@ -97,21 +97,49 @@ type BzzConfig struct {
 	HiveParams   *HiveParams
 }
 
+type BzzDebugApi struct {
+	*Bzz
+}
+
+func (a *BzzDebugApi) ConnCount() struct {
+	C int
+	H int
+} {
+	return struct {
+		C int
+		H int
+	}{
+		C: a.Bzz.Hive.Overlay.Conns().Size(),
+		H: len(a.Bzz.handshakes),
+	}
+
+}
+
+func NewBzzDebugApi(bzz *Bzz) *BzzDebugApi {
+	return &BzzDebugApi{
+		Bzz: bzz,
+	}
+}
+
 // Bzz is the swarm protocol bundle
 type Bzz struct {
 	Hive       *Hive
 	localAddr  *bzzAddr
 	mtx        sync.Mutex
 	handshakes map[discover.NodeID]*bzzHandshake
+	DebugApi   *BzzDebugApi
 }
 
 // NewBzz is the swarm protocol constructor
 func NewBzz(config *BzzConfig, kad Overlay, store StateStore) *Bzz {
-	return &Bzz{
+	b := &Bzz{
 		Hive:       NewHive(config.HiveParams, kad, store),
 		localAddr:  &bzzAddr{config.OverlayAddr, config.UnderlayAddr},
 		handshakes: make(map[discover.NodeID]*bzzHandshake),
 	}
+	b.DebugApi = NewBzzDebugApi(b)
+	return b
+
 }
 
 func (b *Bzz) UpdateLocalAddr(byteaddr []byte) *bzzAddr {
@@ -147,11 +175,18 @@ func (b *Bzz) Protocols() []p2p.Protocol {
 // Bzz implements the node.Service interface, offers APIs:
 // * hive
 func (b *Bzz) APIs() []rpc.API {
-	return []rpc.API{{
-		Namespace: "hive",
-		Version:   "1.0",
-		Service:   b.Hive,
-	}}
+	return []rpc.API{
+		rpc.API{
+			Namespace: "hive",
+			Version:   "1.0",
+			Service:   b.Hive,
+		},
+		rpc.API{
+			Namespace: "hivedebug",
+			Version:   "1.0",
+			Service:   b.DebugApi,
+		},
+	}
 }
 
 func (b *Bzz) Start(server *p2p.Server) error {
@@ -168,7 +203,7 @@ func (b *Bzz) runHandshake(p *p2p.Peer, rw p2p.MsgReadWriter) error {
 	defer b.removeHandshake(p.ID())
 
 	if err := handshake.Perform(p, rw); err != nil {
-		log.Error("handshake failed", "peer", p.ID(), "err", err)
+		log.Error("handshake failed", "peer", p.ID(), "self", NewNodeIDFromAddr(b.localAddr), "err", err)
 		return err
 	}
 

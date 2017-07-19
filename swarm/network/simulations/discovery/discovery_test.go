@@ -31,7 +31,9 @@ var services = adapters.Services{
 var (
 	snapshotFile = flag.String("snapshot", "", "create snapshot")
 	nodeCount    = flag.Int("nodes", 10, "number of nodes to create (default 10)")
-	verbose      = flag.Bool("verbose", false, "output extra logs")
+	vverbose     = flag.Bool("vv", false, "output lots of debug logs")
+	verbose      = flag.Bool("v", false, "output debug logs")
+	customlog    log.Logger
 )
 
 func init() {
@@ -39,12 +41,16 @@ func init() {
 	// register the discovery service which will run as a devp2p
 	// protocol when using the exec adapter
 	adapters.RegisterServices(services)
-
-	if *verbose {
+	customlog = log.New("discoverlog", "*")
+	if *vverbose {
 		log.Root().SetHandler(log.LvlFilterHandler(log.LvlTrace, log.StreamHandler(os.Stderr, log.TerminalFormat(false))))
+	} else if *verbose {
+		log.Root().SetHandler(log.LvlFilterHandler(log.LvlInfo, log.StreamHandler(os.Stderr, log.TerminalFormat(false))))
 	} else {
 		log.Root().SetHandler(log.LvlFilterHandler(log.LvlError, log.StreamHandler(os.Stderr, log.TerminalFormat(false))))
 	}
+	customlog.SetHandler(log.LvlFilterHandler(log.LvlTrace, log.StreamHandler(os.Stderr, log.TerminalFormat(false))))
+
 }
 
 func TestDiscoverySimulationDockerAdapter(t *testing.T) {
@@ -74,7 +80,7 @@ func testDiscoverySimulation(t *testing.T, adapter adapters.NodeAdapter) {
 		ID:             "0",
 		DefaultService: serviceName,
 	})
-	defer net.Shutdown()
+	//defer net.Shutdown()
 	trigger := make(chan discover.NodeID)
 	ids := make([]discover.NodeID, *nodeCount)
 	for i := 0; i < *nodeCount; i++ {
@@ -101,6 +107,7 @@ func testDiscoverySimulation(t *testing.T, adapter adapters.NodeAdapter) {
 			} else {
 				peerID = ids[i-1]
 			}
+			customlog.Warn("conn", "self", id, "peer", peerID)
 			if err := net.Connect(id, peerID); err != nil {
 				return err
 			}
@@ -114,7 +121,6 @@ func testDiscoverySimulation(t *testing.T, adapter adapters.NodeAdapter) {
 			return false, ctx.Err()
 		default:
 		}
-
 		node := net.GetNode(id)
 		if node == nil {
 			return false, fmt.Errorf("unknown node: %s", id)
@@ -130,7 +136,7 @@ func testDiscoverySimulation(t *testing.T, adapter adapters.NodeAdapter) {
 		return healthy, nil
 	}
 
-	timeout := 30 * time.Second
+	timeout := 10 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -143,6 +149,34 @@ func testDiscoverySimulation(t *testing.T, adapter adapters.NodeAdapter) {
 		},
 	})
 	if result.Error != nil {
+		var nopass []discover.NodeID
+		passcount := 0
+		nopasscount := 0
+		for _, nid := range ids {
+			if result.Passes[nid].IsZero() {
+				nopass = append(nopass, nid)
+				nopasscount++
+			} else {
+				passcount++
+			}
+		}
+		customlog.Info("count", "passes", passcount, "nopasses", nopasscount)
+		for {
+			for _, nopassnid := range nopass {
+				var r struct {
+					C int
+					H int
+				}
+				customlog.Info("nopass", "node", nopassnid)
+				stopnode := net.GetNode(nopassnid)
+				stopclient, _ := stopnode.Client()
+				stopclient.Call(&r, "hivedebug_connCount")
+				customlog.Warn("stopclient", "connsize", r.C, "hssize", r.H)
+			}
+			time.Sleep(time.Second)
+		}
+		t.Fatalf("deadline exceeded: %v, %v", result.FinishedAt, ctx.Err())
+
 		t.Fatalf("simulation failed: %s", result.Error)
 	}
 
@@ -213,7 +247,7 @@ func newService(ctx *adapters.ServiceContext) (node.Service, error) {
 	kp.MinProxBinSize = testMinProxBinSize
 	kp.MaxBinSize = 3
 	kp.MinBinSize = 1
-	kp.MaxRetries = 1000
+	kp.MaxRetries = 3
 	kp.RetryExponent = 2
 	kp.RetryInterval = 1000000
 	kad := network.NewKademlia(addr.Over(), kp)

@@ -87,6 +87,10 @@ type Kademlia struct {
 	currentDepth uint8    // stores the last calculated depth
 }
 
+func (k *Kademlia) Conns() *pot.Pot {
+	return k.conns
+}
+
 // NewKademlia creates a Kademlia table for base address addr
 // with parameters as in params
 // if params is nil, it uses default values

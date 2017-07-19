@@ -25,6 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/p2p/discover"
+	"github.com/ethereum/go-ethereum/pot"
 )
 
 /*
@@ -49,6 +50,8 @@ type Overlay interface {
 
 	EachConn([]byte, int, func(OverlayConn, int, bool) bool)
 	EachAddr([]byte, int, func(OverlayAddr, int) bool)
+
+	Conns() *pot.Pot
 
 	SuggestPeer() (OverlayAddr, int, bool)
 
@@ -154,6 +157,7 @@ func (h *Hive) Start(server *p2p.Server) error {
 
 // Stop terminates the updateloop and saves the peers
 func (h *Hive) Stop() {
+	log.Warn("entering hive stop", "hive", h)
 	if h.store != nil {
 		h.savePeers()
 	}
