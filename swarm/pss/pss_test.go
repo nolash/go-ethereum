@@ -137,21 +137,21 @@ func TestCache(t *testing.T) {
 	}
 
 	// check the cache
-	err = ps.addFwdCache(digest)
+	err = ps.addFwdCache(digest, "")
 	if err != nil {
 		t.Fatalf("write to pss expire cache failed: %v", err)
 	}
 
-	if !ps.checkFwdCache(nil, digest) {
+	if !ps.checkFwdCache("", digest) {
 		t.Fatalf("message %v should have EXPIRE record in cache but checkCache returned false", msg)
 	}
 
-	if ps.checkFwdCache(nil, digesttwo) {
+	if ps.checkFwdCache("", digesttwo) {
 		t.Fatalf("message %v should NOT have EXPIRE record in cache but checkCache returned true", msgtwo)
 	}
 
 	time.Sleep(pp.CacheTTL)
-	if ps.checkFwdCache(nil, digest) {
+	if ps.checkFwdCache("", digest) {
 		t.Fatalf("message %v should have expired from cache but checkCache returned true", msg)
 	}
 }
@@ -866,7 +866,7 @@ func benchmarkSymkeyBruteforceChangeaddr(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if !ps.process(pssmsgs[len(pssmsgs)-(i%len(pssmsgs))-1]) {
+		if !ps.process(pssmsgs[len(pssmsgs)-(i%len(pssmsgs))-1], "", nil) {
 			b.Fatalf("pss processing failed")
 		}
 	}
@@ -947,7 +947,7 @@ func benchmarkSymkeyBruteforceSameaddr(b *testing.B) {
 		Payload: env,
 	}
 	for i := 0; i < b.N; i++ {
-		if !ps.process(pssmsg) {
+		if !ps.process(pssmsg, "", nil) {
 			b.Fatalf("pss processing failed: %v", err)
 		}
 	}
