@@ -350,6 +350,14 @@ DEPRECATED: use 'swarm db clean'.
 		//deprecated flags
 		DeprecatedEthAPIFlag,
 	}
+	rpcFlags := []cli.Flag{
+		utils.WSEnabledFlag,
+		utils.WSListenAddrFlag,
+		utils.WSPortFlag,
+		utils.WSApiFlag,
+		utils.WSAllowedOriginsFlag,
+	}
+	app.Flags = append(app.Flags, rpcFlags...)
 	app.Flags = append(app.Flags, debug.Flags...)
 	app.Before = func(ctx *cli.Context) error {
 		runtime.GOMAXPROCS(runtime.NumCPU())
@@ -359,6 +367,7 @@ DEPRECATED: use 'swarm db clean'.
 		debug.Exit()
 		return nil
 	}
+
 }
 
 func main() {
