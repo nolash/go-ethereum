@@ -68,6 +68,14 @@ func NewSimulatedBackend(alloc core.GenesisAlloc) *SimulatedBackend {
 	return backend
 }
 
+func (b *SimulatedBackend) State() *state.StateDB {
+	return b.pendingState
+}
+
+func (b *SimulatedBackend) Config() *params.ChainConfig {
+	return b.config
+}
+
 // Commit imports all the pending transactions as a single block and starts a
 // fresh new state.
 func (b *SimulatedBackend) Commit() {
