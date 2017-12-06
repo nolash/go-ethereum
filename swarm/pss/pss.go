@@ -659,6 +659,7 @@ func (self *Pss) forward(msg *PssMsg) error {
 			return false
 		}
 		pp := self.fwdPool[sp.Info().ID]
+		log.Info("pp", "info", sp.Info(), "id", sp.Info().ID)
 		if self.checkFwdCache(op.Address(), digest) {
 			log.Trace(fmt.Sprintf("%v: peer already forwarded to", sendMsg))
 			return true
