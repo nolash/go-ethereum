@@ -385,6 +385,7 @@ func runSyncTest(chunkCount int, nodeCount int) error {
 			Check: check,
 		},
 	})
+	log.Info("no stuck")
 	close(quitC)
 	if result.Error != nil {
 		return result.Error
