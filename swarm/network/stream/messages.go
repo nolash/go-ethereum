@@ -114,6 +114,7 @@ func (p *Peer) handleSubscribeMsg(req *SubscribeMsg) (err error) {
 
 	go func() {
 		if err := p.SendOfferedHashes(os, from, to); err != nil {
+			log.Warn("sendofferedhashes", "err", err, "from", from, "to", to)
 			p.Drop(err)
 		}
 	}()

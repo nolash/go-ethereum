@@ -202,7 +202,7 @@ func (self *SimNode) Client() (*rpc.Client, error) {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
 	if self.client == nil {
-		return nil, errors.New("node not started")
+		return nil, errors.New("client: node not started")
 	}
 	return self.client, nil
 }

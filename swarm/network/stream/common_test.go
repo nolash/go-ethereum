@@ -63,7 +63,7 @@ func init() {
 	// protocol when using the exec adapter
 	adapters.RegisterServices(services)
 
-	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(*loglevel), log.StreamHandler(os.Stderr, log.TerminalFormat(true))))
+	log.Root().SetHandler(log.CallerFileHandler(log.LvlFilterHandler(log.Lvl(*loglevel), log.StreamHandler(os.Stderr, log.TerminalFormat(false)))))
 
 }
 
@@ -112,8 +112,10 @@ func createTestLocalStorageForId(id discover.NodeID, addr *network.BzzAddr) (sto
 func localStoreCleanup() {
 	log.Info("Cleaning up...")
 	for i := 0; i < len(ids); i++ {
-		stores[ids[i]].Close()
-		os.RemoveAll(datadirs[ids[i]])
+		if _, ok := stores[ids[i]]; ok {
+			stores[ids[i]].Close()
+			os.RemoveAll(datadirs[ids[i]])
+		}
 	}
 	log.Info("Local store cleanup done")
 }

@@ -120,6 +120,7 @@ func TestSyncing_32_32(t *testing.T)    { testSyncing(t, 32, 32) }
 func TestSyncing_32_64(t *testing.T)    { testSyncing(t, 32, 64) }
 func TestSyncing_32_128(t *testing.T)   { testSyncing(t, 32, 128) }
 func TestSyncing_32_256(t *testing.T)   { testSyncing(t, 32, 256) }
+func TestSyncing_64_256(t *testing.T)   { testSyncing(t, 64, 256) }
 func TestSyncing_128_16(t *testing.T)   { testSyncing(t, 128, 16) }
 func TestSyncing_128_32(t *testing.T)   { testSyncing(t, 128, 32) }
 func TestSyncing_128_64(t *testing.T)   { testSyncing(t, 128, 64) }
@@ -200,6 +201,9 @@ func runSyncTest(chunkCount int, nodeCount int) error {
 	if err != nil {
 		return err
 	}
+
+	//after the test, clean up local stores initialized with createLocalStoreForId
+	defer localStoreCleanup()
 	defer net.Shutdown()
 
 	//get the nodes of the network
@@ -232,9 +236,6 @@ func runSyncTest(chunkCount int, nodeCount int) error {
 	// or node disconnections
 	disconnectC := make(chan error)
 	quitC := make(chan struct{})
-
-	//after the test, clean up local stores initialized with createLocalStoreForId
-	defer localStoreCleanup()
 
 	//define the action to be performed before the test checks: start syncing
 	action := func(ctx context.Context) error {
@@ -311,13 +312,13 @@ func runSyncTest(chunkCount int, nodeCount int) error {
 		//finally map chunks to the closest addresses
 		mapKeysToNodes(conf)
 
-		go func() {
-			startTime = time.Now()
-			ticker := time.NewTicker(time.Second / 10)
-			for range ticker.C {
-				checkChunkIsAtNode(conf)
-			}
-		}()
+		//		go func() {
+		//			startTime = time.Now()
+		//			ticker := time.NewTicker(time.Second / 10)
+		//			for range ticker.C {
+		//				checkChunkIsAtNode(conf)
+		//			}
+		//		}()
 
 		return nil
 	}
@@ -328,9 +329,9 @@ func runSyncTest(chunkCount int, nodeCount int) error {
 		select {
 		case <-ctx.Done():
 			return false, ctx.Err()
-		case <-disconnectC:
-			log.Error("Disconnect event detected")
-			return false, ctx.Err()
+		case err := <-disconnectC:
+			log.Error("Disconnect event detected", "err", err, "ctx", ctx.Err())
+			return false, err
 		default:
 		}
 
