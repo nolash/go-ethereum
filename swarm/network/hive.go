@@ -25,6 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/p2p/discover"
+	//"github.com/ethereum/go-ethereum/pot"
 	"github.com/ethereum/go-ethereum/swarm/state"
 )
 
@@ -126,12 +127,16 @@ func (h *Hive) Stop() error {
 		return h.savePeers()
 	}
 	log.Info(fmt.Sprintf("%08x hive stopped, dropping peers", h.BaseAddr()[:4]))
-	h.EachConn(nil, 255, func(p OverlayConn, _ int, _ bool) bool {
-		log.Info(fmt.Sprintf("%08x dropping peer %08x", h.BaseAddr()[:4], p.Address()[:4]))
-		p.Drop(nil)
-		return true
-	})
+	//	h.EachConn(nil, 255, func(p OverlayConn, _ int, _ bool) bool {
+	//		log.Info(fmt.Sprintf("%08x dropping peer %08x", h.BaseAddr()[:4], p.Address()[:4]))
+	//		p.Drop(nil)
+	//		return true
+	//	})
 	log.Info(fmt.Sprintf("%08x all peers dropped", h.BaseAddr()[:4]))
+	//	h.Overlay.(*Kademlia).addrs.Each(func(v pot.Val, po int) bool {
+	//		log.Debug("after stop have", "addr", fmt.Sprintf("%x", h.BaseAddr()[:4]), "v", v.(*entry))
+	//		return true
+	//	})
 	return nil
 }
 
@@ -141,6 +146,7 @@ func (h *Hive) Stop() error {
 func (h *Hive) connect() {
 	time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
 	for range h.ticker.C {
+		//time.Sleep(100 * time.Millisecond)
 		addr, depth, changed := h.SuggestPeer()
 		if h.Discovery && changed {
 			NotifyDepth(uint8(depth), h)

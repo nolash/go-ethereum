@@ -37,6 +37,7 @@ var (
 	initCount    = flag.Int("conns", 1, "number of originally connected peers	 (default 1)")
 	snapshotFile = flag.String("snapshot", "", "create snapshot")
 	loglevel     = flag.Int("loglevel", 3, "verbosity of logs")
+	rawlog       = flag.Bool("rawlog", false, "remove terminal formatting from logs")
 )
 
 func init() {
@@ -46,7 +47,7 @@ func init() {
 	adapters.RegisterServices(services)
 
 	log.PrintOrigins(true)
-	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(*loglevel), log.StreamHandler(colorable.NewColorableStderr(), log.TerminalFormat(true))))
+	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(*loglevel), log.StreamHandler(colorable.NewColorableStderr(), log.TerminalFormat(!*rawlog))))
 }
 
 // Benchmarks to test the average time it takes for an N-node ring
