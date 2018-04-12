@@ -31,7 +31,7 @@ import (
 	"github.com/ethereum/go-ethereum/p2p/simulations/adapters"
 )
 
-var dialBanTimeout = 200 * time.Millisecond
+var DialBanTimeout = 200 * time.Millisecond
 
 // NetworkConfig defines configuration options for starting a Network
 type NetworkConfig struct {
@@ -320,7 +320,7 @@ func (self *Network) DidDisconnect(one, other discover.NodeID) error {
 		return fmt.Errorf("%v and %v already disconnected", one, other)
 	}
 	conn.Up = false
-	conn.initiated = time.Now().Add(-dialBanTimeout)
+	conn.initiated = time.Now().Add(-DialBanTimeout)
 	self.events.Send(NewEvent(conn))
 	return nil
 }
@@ -461,12 +461,13 @@ func (self *Network) InitConn(oneID, otherID discover.NodeID) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	if time.Since(conn.initiated) < dialBanTimeout {
-		return nil, fmt.Errorf("connection between %v and %v recently attempted", oneID, otherID)
-	}
 	if conn.Up {
 		return nil, fmt.Errorf("%v and %v already connected", oneID, otherID)
 	}
+	if time.Since(conn.initiated) < DialBanTimeout {
+		return nil, fmt.Errorf("connection between %v and %v recently attempted", oneID, otherID)
+	}
+
 	err = conn.nodesUp()
 	if err != nil {
 		return nil, fmt.Errorf("nodes not up: %v", err)
