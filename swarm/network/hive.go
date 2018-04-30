@@ -191,14 +191,16 @@ func (h *Hive) NodeInfo() interface{} {
 	return h.String()
 }
 
+type PeerInfo struct {
+	OAddr hexutil.Bytes
+	UAddr hexutil.Bytes
+}
+
 // PeerInfo function is used by the p2p.server RPC interface to display
 // protocol specific information any connected peer referred to by their NodeID
 func (h *Hive) PeerInfo(id discover.NodeID) interface{} {
 	addr := NewAddrFromNodeID(id)
-	return struct {
-		OAddr hexutil.Bytes
-		UAddr hexutil.Bytes
-	}{
+	return &PeerInfo{
 		OAddr: addr.OAddr,
 		UAddr: addr.UAddr,
 	}
