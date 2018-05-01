@@ -39,7 +39,7 @@ func NewBlockEstimator() *blockEstimator {
 	ropstenStart, _ := time.Parse(time.RFC3339, "2016-11-20T11:48:50Z")
 	return &blockEstimator{
 		Start:   ropstenStart,
-		Average: 14467100 * time.Microsecond,
+		Average: time.Second * 10,
 	}
 }
 
@@ -236,7 +236,6 @@ func (self *ResourceHandler) Validate(key Key, data []byte) bool {
 	} else if signature == nil {
 		return bytes.Equal(self.resourceHash(period, version, ens.EnsNode(name)), key)
 	}
-
 	digest := self.keyDataHash(key, parseddata)
 	addr, err := getAddressFromDataSig(digest, *signature)
 	if err != nil {
@@ -440,6 +439,29 @@ func (self *ResourceHandler) LookupLatest(ctx context.Context, nameHash common.H
 	return self.lookup(rsrc, nextperiod, 0, refresh, maxLookup)
 }
 
+// Returns the resource before the one currently loaded in the resource object
+//
+// Requires a synced resource object
+func (self *ResourceHandler) LookupPreviousByName(ctx context.Context, name string, maxLookup *ResourceLookupParams) (*resource, error) {
+	return self.LookupPrevious(ctx, ens.EnsNode(name), name, maxLookup)
+}
+
+func (self *ResourceHandler) LookupPrevious(ctx context.Context, nameHash common.Hash, name string, maxLookup *ResourceLookupParams) (*resource, error) {
+	rsrc := self.getResource(name)
+	if !rsrc.isSynced() {
+		return nil, NewResourceError(ErrNotSynced, "LookupPrevious requires synced resource.")
+	}
+	if rsrc.version > 1 {
+		rsrc.version--
+	} else if rsrc.lastPeriod == 1 {
+		return nil, NewResourceError(ErrNothingToReturn, "Current update is the oldest")
+	} else {
+		rsrc.version = 1
+		rsrc.lastPeriod--
+	}
+	return self.lookup(rsrc, rsrc.lastPeriod, rsrc.version, false, maxLookup)
+}
+
 // base code for public lookup methods
 func (self *ResourceHandler) lookup(rsrc *resource, period uint32, version uint32, refresh bool, maxLookup *ResourceLookupParams) (*resource, error) {
 
@@ -464,7 +486,6 @@ func (self *ResourceHandler) lookup(rsrc *resource, period uint32, version uint3
 	if maxLookup == nil {
 		maxLookup = self.queryMaxPeriods
 	}
-	log.Trace("resource lookuup", "period", period, "version", version, "limit", maxLookup.Limit, "max", maxLookup.Max)
 	for period > 0 {
 		if maxLookup.Limit && hops > maxLookup.Max {
 			return nil, NewResourceError(ErrPeriodDepth, fmt.Sprintf("Lookup exceeded max period hops (%d)", maxLookup.Max))
