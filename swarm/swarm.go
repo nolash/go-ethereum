@@ -197,19 +197,6 @@ func NewSwarm(ctx *node.ServiceContext, backend chequebook.Backend, config *api.
 	// setup local store
 	log.Debug(fmt.Sprintf("Set up local storage"))
 
-	db := storage.NewDBAPI(self.lstore)
-	delivery := stream.NewDelivery(to, db)
-
-	self.streamer = stream.NewRegistry(addr, delivery, db, stateStore, &stream.RegistryOptions{
-		DoSync:          true,
-		DoRetrieve:      true,
-		SyncUpdateDelay: config.SyncUpdateDelay,
-	})
-
-	// set up DPA, the cloud storage local access layer
-	dpaChunkStore := storage.NewNetStore(self.lstore, self.streamer.Retrieve)
-	log.Debug(fmt.Sprintf("-> Local Access to Swarm"))
-
 	var resourceHandler *storage.ResourceHandler
 	rhparams := &storage.ResourceHandlerParams{
 		// TODO: config parameter to set limits
