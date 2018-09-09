@@ -154,6 +154,13 @@ func NewServer(api *api.API, corsString string) *Server {
 			http.HandlerFunc(server.HandlePostResource),
 			defaultMiddlewares...,
 		),
+		"OPTIONS": Adapt(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Add("Access-Control-Allow-Origin", "*")
+				w.Header().Add("Access-Control-Allow-Methods", "GET, POST")
+			}),
+			defaultMiddlewares...,
+		),
 	})
 
 	mux.Handle("/", methodHandler{
@@ -554,6 +561,8 @@ func (s *Server) HandlePostResource(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Add("Content-type", "application/json")
 	}
+	w.Header().Add("Access-Control-Allow-Origin", "*")
+	w.Header().Add("Access-Control-Allow-Methods", "GET, POST")
 }
 
 // Retrieve mutable resource updates:
