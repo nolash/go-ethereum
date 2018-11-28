@@ -603,6 +603,9 @@ func (s *Server) translateFeedError(w http.ResponseWriter, r *http.Request, supE
 	if !ok && rsrcErr != nil {
 		code = rsrcErr.Code()
 	}
+	for k, h := range r.Header() {
+		log.Info("header", "key", k, "val", h)
+	}
 	switch code {
 	case storage.ErrInvalidValue:
 		return http.StatusBadRequest, defaultErr
@@ -832,7 +835,7 @@ func (s *Server) HandleGetFile(w http.ResponseWriter, r *http.Request) {
 	if found := path.Base(uri.Path); found != "" && found != "." && found != "/" {
 		fileName = found
 	}
-	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", fileName))
+	//w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", fileName))
 
 	http.ServeContent(w, r, fileName, time.Now(), newBufferedReadSeeker(reader, getFileBufferSize))
 }
