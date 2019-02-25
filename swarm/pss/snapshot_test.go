@@ -31,8 +31,8 @@ import (
 )
 
 var (
-	runNodes      = flag.Int("nodes", 0, "nodes to start in the network")
-	runMessages   = flag.Int("messages", 0, "messages to send during test")
+	runNodes    = flag.Int("nodes", 0, "nodes to start in the network")
+	runMessages = flag.Int("messages", 0, "messages to send during test")
 	//stableTimeout = flag.Int("timeout.stable", 10, "timeout in seconds for network to stabilize")
 )
 
@@ -44,12 +44,13 @@ type handlerContextFunc func(*adapters.NodeConfig) *handler
 // - consider a separate pss unwrap to message event in sim framework (this will make eventual message propagation analysis with pss easier/possible in the future)
 // - consider also test api calls to inspect handling results of messages
 type handlerNotification struct {
-	id     enode.ID
-	serial uint64
+	id      enode.ID
+	msgaddr []byte
+	serial  uint64
 }
 
 func init() {
-	log.Root().SetHandler(log.LvlFilterHandler(log.LvlTrace, log.StreamHandler(os.Stderr, log.TerminalFormat(true))))
+	log.Root().SetHandler(log.LvlFilterHandler(log.LvlDebug, log.StreamHandler(os.Stderr, log.TerminalFormat(true))))
 }
 
 func TestProxNetwork(t *testing.T) {
@@ -97,9 +98,12 @@ func testProxNetwork(t *testing.T) {
 			return &handler{
 				f: func(msg []byte, p *p2p.Peer, asymmetric bool, keyid string) error {
 
+					msgaddr := msg[:32]
+
 					// using simple serial in message body
 					// makes it easy to keep track of who's getting what
-					serial, c := binary.Uvarint(msg)
+					//serial, c := binary.Uvarint(msg)
+					serial, c := binary.Uvarint(msg[32:])
 					if c <= 0 {
 						t.Fatalf("corrupt message received by %x (uvarint parse returned %d)", ctx.ID, c)
 					}
@@ -114,8 +118,9 @@ func testProxNetwork(t *testing.T) {
 
 					// pass message context to the listener in the simulation
 					handlerC <- handlerNotification{
-						id:     ctx.ID,
-						serial: serial,
+						id:      ctx.ID,
+						serial:  serial,
+						msgaddr: msgaddr,
 					}
 					return nil
 				},
@@ -249,10 +254,10 @@ func testProxNetwork(t *testing.T) {
 				// incoming message from pss message handler
 				case handlerNotification := <-handlerC:
 
-				// for syntax brevity below
+					// for syntax brevity below
 					xMsgs := expectedMsgs[handlerNotification.id]
 
-				// check if recipient has already received all its messages and notify to fail the test if so
+					// check if recipient has already received all its messages and notify to fail the test if so
 					if len(xMsgs) == 0 {
 						mu.Lock()
 						handlerDone = true
@@ -261,8 +266,8 @@ func testProxNetwork(t *testing.T) {
 						return
 					}
 
-				// check if message serial is in expected messages for this recipient
-				// and notify to fail the test if not
+					// check if message serial is in expected messages for this recipient
+					// and notify to fail the test if not
 					idx := -1
 					for i, msg := range xMsgs {
 						if handlerNotification.serial == msg {
@@ -278,7 +283,7 @@ func testProxNetwork(t *testing.T) {
 						return
 					}
 
-				// message is ok, so remove that message serial from the recipient expectation array and notify the main sim thread
+					// message is ok, so remove that message serial from the recipient expectation array and notify the main sim thread
 					xMsgs[idx] = xMsgs[len(xMsgs)-1]
 					xMsgs = xMsgs[:len(xMsgs)-1]
 					msgC <- handlerNotification
@@ -296,9 +301,13 @@ func testProxNetwork(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				var uvarByte [8]byte
-				binary.PutUvarint(uvarByte[:], uint64(i))
-				nodeClient.Call(nil, "pss_sendRaw", hexutil.Encode(msg), hexutil.Encode(topic[:]), hexutil.Encode(uvarByte[:]))
+				var payload [40]byte
+				copy(payload[:], msg)
+				//var uvarByte [8]byte
+				//binary.PutUvarint(uvarByte[:], uint64(i))
+				binary.PutUvarint(payload[32:], uint64(i))
+				//nodeClient.Call(nil, "pss_sendRaw", hexutil.Encode(msg), hexutil.Encode(topic[:]), hexutil.Encode(uvarByte[:]))
+				nodeClient.Call(nil, "pss_sendRaw", hexutil.Encode(msg), hexutil.Encode(topic[:]), hexutil.Encode(payload[:]))
 			}
 		}(msgs, senders, sim)
 
@@ -314,7 +323,7 @@ func testProxNetwork(t *testing.T) {
 			case hn := <-msgC:
 				cnt++
 				msgsCountdown--
-				log.Debug("msg received", "msgs_received", cnt, "total_expected", msgsToReceive, "id", hn.id, "serial", hn.serial)
+				log.Debug("msg received", "msgs_received", cnt, "total_expected", msgsToReceive, "serial", hn.serial, "msgaddr", hexutil.Encode(hn.msgaddr)[2:18], "id", hn.id)
 				if msgsCountdown == 0 {
 					close(doneC)
 				}
