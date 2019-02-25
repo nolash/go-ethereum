@@ -33,7 +33,6 @@ import (
 var (
 	runNodes    = flag.Int("nodes", 0, "nodes to start in the network")
 	runMessages = flag.Int("messages", 0, "messages to send during test")
-	//stableTimeout = flag.Int("timeout.stable", 10, "timeout in seconds for network to stabilize")
 )
 
 // needed to make the enode id of the receiving node available to the handler for triggers
@@ -50,7 +49,7 @@ type handlerNotification struct {
 }
 
 func init() {
-	log.Root().SetHandler(log.LvlFilterHandler(log.LvlDebug, log.StreamHandler(os.Stderr, log.TerminalFormat(true))))
+	log.Root().SetHandler(log.LvlFilterHandler(log.LvlTrace, log.StreamHandler(os.Stderr, log.TerminalFormat(true))))
 }
 
 func TestProxNetwork(t *testing.T) {

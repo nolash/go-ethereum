@@ -463,7 +463,7 @@ func (p *Pss) process(pssmsg *PssMsg, raw bool, prox bool) error {
 		payload = recvmsg.Payload
 	}
 
-	if len(pssmsg.To) < addressLength {
+	if len(pssmsg.To) < addressLength || prox {
 		if err := p.enqueue(pssmsg); err != nil {
 			return err
 		}
@@ -723,6 +723,7 @@ func (p *Pss) forward(msg *PssMsg) error {
 	to := make([]byte, addressLength)
 	copy(to[:len(msg.To)], msg.To)
 	neighbourhoodDepth := p.Kademlia.NeighbourhoodDepth()
+	log.Trace("forwarding pss msg", "base", common.ToHex(p.BaseAddr()), "to", common.ToHex(msg.To))
 
 	// luminosity is the opposite of darkness. the more bytes are removed from the address, the higher is darkness,
 	// but the luminosity is less. here luminosity equals the number of bits given in the destination address.
